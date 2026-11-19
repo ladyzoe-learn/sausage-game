@@ -40,7 +40,7 @@ body {
 .app {
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto 1fr auto auto;
+  grid-template-rows: auto auto 1fr auto;
   gap: 12px;
   max-width: 760px;
   margin: 0 auto;
@@ -224,26 +224,6 @@ body {
 }
 .sausage.squid.burnt { --c: #1b0f0a; }
 
-/* 選要放什麼 */
-.picker {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.pick {
-  appearance: none;
-  background: var(--coal);
-  color: var(--paper);
-  border: 2px solid rgba(255, 122, 46, 0.25);
-  border-radius: 12px;
-  padding: 8px;
-  font: 900 16px var(--font-body);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-.pick small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); }
-.pick[aria-pressed="true"] { border-color: var(--lantern); box-shadow: 0 0 14px rgba(255, 197, 77, 0.45); color: var(--lantern); }
-.pick:focus-visible { outline: 3px solid var(--lantern); outline-offset: 2px; }
 
 /* 底面熟度條 */
 .under {
@@ -529,19 +509,14 @@ body {
 
   <main class="grill" id="grill" aria-label="烤架"><div class="banner" id="banner" aria-live="polite"></div></main>
 
-  <section class="picker" aria-label="選要烤什麼">
-    <button class="pick" id="pickSausage" type="button" aria-pressed="true">香腸<small>經典款</small></button>
-    <button class="pick" id="pickSquid" type="button" aria-pressed="false">魷魚<small>熟得慢・分數 ×1.5</small></button>
-  </section>
-
-  <p class="hint">選好下面的料，點空位<b>放上去</b>・點香腸<b>翻面</b>・兩面都烤到綠色區間會發光，<b>點一下出餐</b></p>
+  <p class="hint">點空位<b>放料</b>（隨機香腸或魷魚）・點香腸<b>翻面</b>・兩面都烤到綠色區間會發光，<b>點一下出餐</b></p>
 </div>
 
 <div class="overlay" id="startScreen">
   <div class="card">
     <h2 id="startTitle">今晚你來顧攤</h2>
     <ul class="rules">
-      <li data-n="1"><span>先選<b>香腸</b>或<b>魷魚</b>，再點空位放上去。魷魚熟得慢，但<b>分數 ×1.5</b>；發金光的是<b>黃金香腸，分數 ×3</b></span></li>
+      <li data-n="1"><span>點空位放料，會<b>隨機</b>出現香腸或魷魚，魷魚熟得比較慢；發金光的是<b>黃金香腸，分數 ×3</b></span></li>
       <li data-n="2"><span>只有<b>貼著炭火的那面</b>會熟，香腸下面那條是底面熟度，點香腸就翻面</span></li>
       <li data-n="3"><span>兩面都進綠色區間會發光，點一下出餐：<b>完美 +1.5 秒</b>，連續 3 次進入 <b>FEVER 分數 ×2</b></span></li>
       <li data-n="4"><span>烤焦<b>扣分又扣 1 秒</b>；最後 5 秒火力全開</span></li>
@@ -591,7 +566,7 @@ const CFG = {
   goldenChance: 0.15,       // 黃金香腸出現機率
   goldenMult: 3,            // 黃金香腸分數倍率
   squidRate: 0.85,          // 魷魚熟的速度（香腸的幾倍，比較慢）
-  squidMult: 1.5,           // 魷魚分數倍率
+  squidChance: 0.4,         // 放上去是魷魚的機率（其他是香腸）
 };
 /* ======================================================================== */
 
@@ -695,17 +670,8 @@ for (let i = 0; i < CFG.slots; i++) {
   slotEls.push(b);
 }
 
-let pickKind = "sausage";
-function setPick(kind) {
-  pickKind = kind;
-  $("pickSausage").setAttribute("aria-pressed", String(kind === "sausage"));
-  $("pickSquid").setAttribute("aria-pressed", String(kind === "squid"));
-}
-$("pickSausage").addEventListener("click", () => setPick("sausage"));
-$("pickSquid").addEventListener("click", () => setPick("squid"));
-
 function newSausage() {
-  const kind = pickKind;
+  const kind = Math.random() < CFG.squidChance ? "squid" : "sausage";
   const golden = kind === "sausage" && Math.random() < CFG.goldenChance;
   return {
     kind,
@@ -825,7 +791,6 @@ function tap(i) {
   } else if (s.top >= CFG.ready && s.bottom >= CFG.ready) {
     const isPerfect = s.top <= CFG.perfectMax && s.bottom <= CFG.perfectMax;
     const golden = s.golden;
-    const squidMult = s.kind === "squid" ? CFG.squidMult : 1;
     let pts, msg, cls;
     if (isPerfect) {
       combo++;
@@ -835,7 +800,7 @@ function tap(i) {
       if (combo >= CFG.feverAt) mult *= 2;
       pts = CFG.pointsPerfect * mult + (sweet ? CFG.pointsSweet : 0);
       if (golden) pts *= CFG.goldenMult;
-      pts = Math.round(pts * squidMult);
+      pts = Math.round(pts);
       timeLeft += CFG.timePerfect;
       msg = `${sweet ? "神準" : "完美"}！+${pts}`; cls = "good";
       beep(660 * Math.pow(1.06, Math.min(combo, 12)), 0.16, "sine", 0.18, 1320 * Math.pow(1.06, Math.min(combo, 12)));
@@ -847,7 +812,7 @@ function tap(i) {
       else if (s.kind === "squid") banner("香噴噴魷魚！");
     } else {
       combo = 0;
-      pts = Math.round(CFG.pointsOk * (golden ? CFG.goldenMult : 1) * squidMult);
+      pts = CFG.pointsOk * (golden ? CFG.goldenMult : 1);
       msg = `有點焦 +${pts}`; cls = "meh";
       beep(520, 0.15, "sine", 0.14);
     }
