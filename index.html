@@ -40,7 +40,7 @@ body {
 .app {
   height: 100%;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto auto;
   gap: 12px;
   max-width: 760px;
   margin: 0 auto;
@@ -192,6 +192,59 @@ body {
 .sausage.flip { animation: flip 0.28s ease-out; }
 .sausage.burnt { background: #1b0f0a; }
 
+/* 魷魚：左邊鰭、右邊觸手，身上有切花 */
+.sausage.squid {
+  width: 64%;
+  max-width: 130px;
+  aspect-ratio: 4 / 1.6;
+  border-radius: 48% 22% 22% 48% / 50%;
+  margin-right: 14%;
+}
+.sausage.squid::before { /* 鰭 */
+  left: -16%;
+  width: 26%;
+  height: 130%;
+  border-radius: 0;
+  background: var(--c);
+  clip-path: polygon(0 50%, 100% 0, 100% 100%);
+  filter: brightness(0.92);
+}
+.sausage.squid::after { /* 觸手 */
+  right: -30%;
+  width: 34%;
+  height: 86%;
+  border-radius: 0 40% 40% 0;
+  background: repeating-linear-gradient(180deg, var(--c) 0 5px, transparent 5px 9px);
+}
+.sausage.squid .marks {
+  inset: 16% 10%;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 9px, rgba(60, 22, 8, 0.7) 9px 12px),
+    repeating-linear-gradient(-45deg, transparent 0 9px, rgba(60, 22, 8, 0.7) 9px 12px);
+}
+.sausage.squid.burnt { --c: #1b0f0a; }
+
+/* 選要放什麼 */
+.picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.pick {
+  appearance: none;
+  background: var(--coal);
+  color: var(--paper);
+  border: 2px solid rgba(255, 122, 46, 0.25);
+  border-radius: 12px;
+  padding: 8px;
+  font: 900 16px var(--font-body);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pick small { display: block; font-size: 11px; font-weight: 700; color: var(--muted); }
+.pick[aria-pressed="true"] { border-color: var(--lantern); box-shadow: 0 0 14px rgba(255, 197, 77, 0.45); color: var(--lantern); }
+.pick:focus-visible { outline: 3px solid var(--lantern); outline-offset: 2px; }
+
 /* 底面熟度條 */
 .under {
   width: 88%;
@@ -211,11 +264,11 @@ body {
   background: rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.bar::before { /* 60–85 剛好區間 */
+.bar::before { /* 60–88 剛好區間 */
   content: "";
   position: absolute;
   left: 60%;
-  width: 25%;
+  width: 28%;
   top: 0;
   bottom: 0;
   background: rgba(143, 209, 106, 0.35);
@@ -476,17 +529,22 @@ body {
 
   <main class="grill" id="grill" aria-label="烤架"><div class="banner" id="banner" aria-live="polite"></div></main>
 
-  <p class="hint">點空位<b>放香腸</b>・點香腸<b>翻面</b>・兩面都烤到綠色區間會發光，<b>點一下出餐</b></p>
+  <section class="picker" aria-label="選要烤什麼">
+    <button class="pick" id="pickSausage" type="button" aria-pressed="true">香腸<small>經典款</small></button>
+    <button class="pick" id="pickSquid" type="button" aria-pressed="false">魷魚<small>熟得慢・分數 ×1.5</small></button>
+  </section>
+
+  <p class="hint">選好下面的料，點空位<b>放上去</b>・點香腸<b>翻面</b>・兩面都烤到綠色區間會發光，<b>點一下出餐</b></p>
 </div>
 
 <div class="overlay" id="startScreen">
   <div class="card">
     <h2 id="startTitle">今晚你來顧攤</h2>
     <ul class="rules">
-      <li data-n="1"><span>點空位放香腸，<b>發金光的是黃金香腸，分數 ×3</b></span></li>
+      <li data-n="1"><span>先選<b>香腸</b>或<b>魷魚</b>，再點空位放上去。魷魚熟得慢，但<b>分數 ×1.5</b>；發金光的是<b>黃金香腸，分數 ×3</b></span></li>
       <li data-n="2"><span>只有<b>貼著炭火的那面</b>會熟，香腸下面那條是底面熟度，點香腸就翻面</span></li>
       <li data-n="3"><span>兩面都進綠色區間會發光，點一下出餐：<b>完美 +1.5 秒</b>，連續 3 次進入 <b>FEVER 分數 ×2</b></span></li>
-      <li data-n="4"><span>烤焦<b>扣分又扣 2 秒</b>；最後 5 秒火力全開</span></li>
+      <li data-n="4"><span>烤焦<b>扣分又扣 1 秒</b>；最後 5 秒火力全開</span></li>
     </ul>
     <button class="go" id="startBtn" type="button">開始烤（15 秒）</button>
   </div>
@@ -511,27 +569,29 @@ body {
 /* ================= 遊戲設定：上課現場可以請 Claude 改這裡 ================= */
 const CFG = {
   shopName: "黑豬烤香腸",   // 招牌上的攤位名稱
-  roundSec: 15,             // 一局幾秒
+  roundSec: 25,             // 一局幾秒
   slots: 6,                 // 烤架上幾個位置
-  rateMin: 15,              // 熟得最慢的速度（每秒）
-  rateMax: 22,              // 熟得最快的速度（每秒）
+  rateMin: 10,              // 熟得最慢的速度（每秒）
+  rateMax: 14,              // 熟得最快的速度（每秒）
   ready: 60,                // 到這個熟度就算熟了
-  perfectMax: 85,           // 超過這個就「有點焦」
+  perfectMax: 88,           // 超過這個就「有點焦」
   burn: 100,                // 到這裡就烤焦
   sweetMin: 68,             // 兩面都落在這個區間＝神準，額外加分
   sweetMax: 78,
   pointsPerfect: 100,
   pointsSweet: 50,
   pointsOk: 30,
-  pointsBurnt: -50,
+  pointsBurnt: -30,
   timePerfect: 1.5,         // 完美出餐加幾秒
-  timeBurnt: 2,             // 烤焦扣幾秒
+  timeBurnt: 1,             // 烤焦扣幾秒
   feverAt: 3,               // 連續完美幾次進入 FEVER（分數 ×2、火變大）
   feverHeat: 1.3,
   rushSec: 5,               // 最後幾秒火力全開
   rushHeat: 1.25,
   goldenChance: 0.15,       // 黃金香腸出現機率
   goldenMult: 3,            // 黃金香腸分數倍率
+  squidRate: 0.85,          // 魷魚熟的速度（香腸的幾倍，比較慢）
+  squidMult: 1.5,           // 魷魚分數倍率
 };
 /* ======================================================================== */
 
@@ -551,11 +611,20 @@ const STOPS = [
   [85, [150, 74, 34]],
   [100, [45, 24, 16]],
 ];
-function cookColor(v) {
+/* 魷魚：生（半透明白）→ 金黃醬色 → 焦 */
+const SQUID_STOPS = [
+  [0, [238, 230, 218]],
+  [40, [236, 200, 158]],
+  [60, [218, 142, 78]],
+  [85, [160, 82, 40]],
+  [100, [45, 24, 16]],
+];
+function cookColor(v, kind) {
+  const stops = kind === "squid" ? SQUID_STOPS : STOPS;
   v = Math.max(0, Math.min(100, v));
-  for (let i = 1; i < STOPS.length; i++) {
-    const [b, cb] = STOPS[i];
-    const [a, ca] = STOPS[i - 1];
+  for (let i = 1; i < stops.length; i++) {
+    const [b, cb] = stops[i];
+    const [a, ca] = stops[i - 1];
     if (v <= b) {
       const t = (v - a) / (b - a);
       const c = ca.map((x, k) => Math.round(x + (cb[k] - x) * t));
@@ -626,12 +695,23 @@ for (let i = 0; i < CFG.slots; i++) {
   slotEls.push(b);
 }
 
+let pickKind = "sausage";
+function setPick(kind) {
+  pickKind = kind;
+  $("pickSausage").setAttribute("aria-pressed", String(kind === "sausage"));
+  $("pickSquid").setAttribute("aria-pressed", String(kind === "squid"));
+}
+$("pickSausage").addEventListener("click", () => setPick("sausage"));
+$("pickSquid").addEventListener("click", () => setPick("squid"));
+
 function newSausage() {
-  const golden = Math.random() < CFG.goldenChance;
+  const kind = pickKind;
+  const golden = kind === "sausage" && Math.random() < CFG.goldenChance;
   return {
+    kind,
     top: 0,
     bottom: 0,
-    rate: (CFG.rateMin + Math.random() * (CFG.rateMax - CFG.rateMin)) * (golden ? 1.2 : 1),
+    rate: (CFG.rateMin + Math.random() * (CFG.rateMax - CFG.rateMin)) * (golden ? 1.2 : 1) * (kind === "squid" ? CFG.squidRate : 1),
     golden,
     burnt: false,
     burntT: 0,
@@ -698,9 +778,12 @@ function renderSlot(i) {
     el._built = false;
     return;
   }
-  if (!el._built) {
+  const kind = s.kind || "sausage";
+  const name = kind === "squid" ? "魷魚" : "香腸";
+  if (!el._built || el._kind !== kind) {
+    el._kind = kind;
     el.innerHTML =
-      '<div class="sausage"><div class="marks"></div></div>' +
+      `<div class="sausage${kind === "squid" ? " squid" : ""}"><div class="marks"></div></div>` +
       '<div class="under"><span>底面</span><div class="bar"><i></i></div></div>' +
       '<div class="smoke" hidden><span></span><span></span><span></span></div>' +
       '<div class="tag" hidden>點我出餐</div>';
@@ -714,13 +797,13 @@ function renderSlot(i) {
   el.className = "slot filled" + (ready ? " ready" : "");
   el._saus.classList.toggle("burnt", s.burnt);
   el._saus.classList.toggle("golden", !!s.golden && !s.burnt);
-  el._saus.style.setProperty("--c", cookColor(s.top));
+  el._saus.style.setProperty("--c", cookColor(s.top, kind));
   el._saus.style.setProperty("--m", Math.max(0, Math.min(1, (s.top - 35) / 30)).toFixed(2));
   el._bar.style.setProperty("--w", Math.min(100, s.bottom) + "%");
-  el._bar.style.setProperty("--bc", cookColor(s.bottom));
+  el._bar.style.setProperty("--bc", cookColor(s.bottom, kind));
   el._smoke.hidden = !(s.burnt || s.bottom > CFG.perfectMax);
   el._tag.hidden = !ready;
-  el.setAttribute("aria-label", s.burnt ? "烤焦了" : ready ? "烤好了，點一下出餐" : `香腸：上面 ${Math.round(s.top)}、底面 ${Math.round(s.bottom)}，點一下翻面`);
+  el.setAttribute("aria-label", s.burnt ? "烤焦了" : ready ? "烤好了，點一下出餐" : `${name}：上面 ${Math.round(s.top)}、底面 ${Math.round(s.bottom)}，點一下翻面`);
 }
 
 function floatText(i, text, cls) {
@@ -742,6 +825,7 @@ function tap(i) {
   } else if (s.top >= CFG.ready && s.bottom >= CFG.ready) {
     const isPerfect = s.top <= CFG.perfectMax && s.bottom <= CFG.perfectMax;
     const golden = s.golden;
+    const squidMult = s.kind === "squid" ? CFG.squidMult : 1;
     let pts, msg, cls;
     if (isPerfect) {
       combo++;
@@ -751,7 +835,7 @@ function tap(i) {
       if (combo >= CFG.feverAt) mult *= 2;
       pts = CFG.pointsPerfect * mult + (sweet ? CFG.pointsSweet : 0);
       if (golden) pts *= CFG.goldenMult;
-      pts = Math.round(pts);
+      pts = Math.round(pts * squidMult);
       timeLeft += CFG.timePerfect;
       msg = `${sweet ? "神準" : "完美"}！+${pts}`; cls = "good";
       beep(660 * Math.pow(1.06, Math.min(combo, 12)), 0.16, "sine", 0.18, 1320 * Math.pow(1.06, Math.min(combo, 12)));
@@ -760,9 +844,10 @@ function tap(i) {
       if (combo === CFG.feverAt) banner("FEVER ×2");
       else if (golden) banner("黃金香腸 ×" + CFG.goldenMult);
       else if (combo >= 2) banner(combo + " 連發！");
+      else if (s.kind === "squid") banner("香噴噴魷魚！");
     } else {
       combo = 0;
-      pts = CFG.pointsOk * (golden ? CFG.goldenMult : 1);
+      pts = Math.round(CFG.pointsOk * (golden ? CFG.goldenMult : 1) * squidMult);
       msg = `有點焦 +${pts}`; cls = "meh";
       beep(520, 0.15, "sine", 0.14);
     }
@@ -893,7 +978,7 @@ slots = [
   { top: 0, bottom: 0, rate: 0, burnt: false, burntT: 0 },
   null,
   { top: 75, bottom: 72, rate: 0, burnt: false, burntT: 0 },
-  null,
+  { kind: "squid", top: 65, bottom: 20, rate: 0, burnt: false, burntT: 0 },
   { top: 40, bottom: 90, rate: 0, burnt: false, burntT: 0 },
 ];
 for (let i = 0; i < CFG.slots; i++) renderSlot(i);
